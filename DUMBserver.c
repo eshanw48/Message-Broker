@@ -31,7 +31,7 @@ void * process(void * ptr)
 
 
 	//HELLO
-	printf("Port number is\n", portN);
+	printf("Port number is %d\n", portN);
 	
 
 	char *command;
@@ -59,6 +59,12 @@ void * process(void * ptr)
 	int port;
 	connection_t * connection;
 	pthread_t thread;
+
+	if(argc < 2)
+{
+	printf("Invalid args\n");
+	return -1;
+}
 	portN = atoi(argv[1]);
 
 	/* check for command line arguments */
@@ -116,6 +122,7 @@ void * process(void * ptr)
 			/* start a new thread but do not wait for it */
 			pthread_create(&thread, 0, process, (void *)connection);
 			pthread_detach(thread);
+		//	printf("hello\n");
 		}
 	}
 	
