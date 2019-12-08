@@ -1,60 +1,123 @@
-// Server side C/C++ program to demonstrate Socket programming
-#include <unistd.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <stdlib.h>
-#include <netinet/in.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <linux/in.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
-#define PORT 8080
-
-int main(int argc, char const *argv[])
+typedef struct
 {
-	int server_fd, new_socket, valread;
+	int sock;
+	struct sockaddr address;
+	int addr_len;
+} connection_t;
+
+int portN;
+
+void * process(void * ptr)
+{
+	char * buffer;
+	int len;
+	connection_t * conn;
+	long addr = 0;
+
+	if (!ptr) pthread_exit(0); 
+	conn = (connection_t *)ptr;
+
+
+	//HELLO
+	printf("Port number is\n", portN);
+	
+
+	char *command;
+	command = (char *)malloc(2*sizeof(char));
+
+	read(conn->sock,command,2);
+
+	if(strcmp(command,"GDBYE")==0){
+	
+
+	}else if(strcmp(command,"CREAT")==0){
+	
+	
+	/* close socket and clean up */
+	close(conn->sock);
+	free(conn);
+	pthread_exit(0);
+}
+}
+
+	int main(int argc, char **argv)
+{
+	int sock = -1;
 	struct sockaddr_in address;
-	int opt = 1;
-	int addrlen = sizeof(address);
-	char buffer[1024] = {0};
-	char *hello = "Hello from server";
+	int port;
+	connection_t * connection;
+	pthread_t thread;
+	portN = atoi(argv[1]);
 
-	// Creating socket file descriptor
-	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+	/* check for command line arguments */
+	if (argc != 2)
 	{
-		perror("socket failed");
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "usage: %s port\n", argv[0]);
+		return -1;
 	}
 
-	// Forcefully attaching socket to the port 8080
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
-												&opt, sizeof(opt)))
+	/* obtain port number */
+	if (sscanf(argv[1], "%d", &port) <= 0)
 	{
-		perror("setsockopt");
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "%s: error: wrong parameter: port\n", argv[0]);
+		return -2;
 	}
+
+	/* create socket */
+	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock <= 0)
+	{
+		fprintf(stderr, "%s: error: cannot create socket\n", argv[0]);
+		return -3;
+	}
+
+	/* bind socket to port */
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons( PORT );
+	address.sin_port = htons(port);
+	if (bind(sock, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) < 0)
+	{
+		fprintf(stderr, "%s: error: cannot bind socket to port %d\n", argv[0], port);
+		return -4;
+	}
 
-	// Forcefully attaching socket to the port 8080
-	if (bind(server_fd, (struct sockaddr *)&address,
-								sizeof(address))<0)
+	/* listen on port */
+	if (listen(sock, 5) < 0)
 	{
-		perror("bind failed");
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "%s: error: cannot listen on port\n", argv[0]);
+		return -5;
 	}
-	if (listen(server_fd, 3) < 0)
+
+	printf("%s: ready and listening\n", argv[0]);
+	
+	while (1)
 	{
-		perror("listen");
-		exit(EXIT_FAILURE);
+		/* accept incoming connections */
+		connection = (connection_t *)malloc(sizeof(connection_t));
+		connection->sock = accept(sock, &connection->address, &connection->addr_len);
+		if (connection->sock <= 0)
+		{
+			free(connection);
+		}
+		else
+		{
+			/* start a new thread but do not wait for it */
+			pthread_create(&thread, 0, process, (void *)connection);
+			pthread_detach(thread);
+		}
 	}
-	if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-					(socklen_t*)&addrlen))<0)
-	{
-		perror("accept");
-		exit(EXIT_FAILURE);
-	}
-	valread = read( new_socket , buffer, 1024);
-	printf("%s\n",buffer );
-	send(new_socket , hello , strlen(hello) , 0 );
-	printf("Hello message sent\n");
+	
 	return 0;
 }
