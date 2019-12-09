@@ -17,7 +17,7 @@ typedef struct
 	int addr_len;
 } connection_t;
 
-typedef struct
+typedef struct msgBox
 {
 	char *name;
 	char **message;
@@ -32,7 +32,8 @@ msgBox *newMsgBox(char *name) {
 }
 
 int portN;
-msgBox *head = newMsgBox("head");
+msgBox *head;
+msgBox *current;
 
 void * process(void * ptr)
 {
@@ -43,38 +44,59 @@ void * process(void * ptr)
 
 	if (!ptr) pthread_exit(0);
 	conn = (connection_t *)ptr;
-
+	head = newMsgBox("head");
 
 	//HELLO
 	printf("Port number is %d\n", portN);
 
 
-	char *command = (char *)malloc(5*sizeof(char));
-	char *command2 = (char*)malloc(25*sizeof(char));
+	char *command = (char*)malloc(5*sizeof(char));
+	//char *command2 = (char*)malloc(25*sizeof(char));
 
 	read(conn->sock,command,5);
 	printf("command: %s\n", command);
-	if(strcmp(command,"GDBYE")==0){
-		shutdown(conn->sock);
+//	printf("command2: %s\n", command2);
+
+	if(strcmp(command,"HELLO") == 0)
+	{
+		write(conn->sock, "HELLO DUMBv0 ready!", 19);
+	}
+	else if(strcmp(command,"GDBYE")==0){
+		write(conn->sock, "OK Goodbye", 10);
+		shutdown(conn->sock, SHUT_RDWR);
 		close(conn->sock);
-		read(conn->sock, command, 5);
 		free(conn);
 		pthread_exit(0);
 	}else if(strcmp(command,"CREAT")==0){
+		char *command2 = (char*)malloc(25*sizeof(char));
 		read(conn->sock, command2, 25);
 		int len = strlen(command2);
+		printf("1command2: %s\n", command2);
 		if (len >= 5 && len <= 25) {
 			if ((command2[0] >= 'a' && command2[0] <= 'z') || command2[0] >= 'A' && command2[0] <= 'Z') {
-				msgBox temp = head;
-				while (temp != NULL) {
-					if (strcmp(temp->name, command2) == 0) {
+				msgBox *temp = head;
+				while (temp->next != NULL) {
+					if (strcmp(temp->next->name, command2) == 0) {
 						fprintf(stderr, "ER:EXIST\n");
-						//pthread_exit(0);
+						pthread_exit(0);
 					}
 					temp = temp->next;
 				}
+
+				temp->next = newMsgBox(command2);
+				printf("OK!\n");
+			}
+			else {
+				fprintf(stderr, "ER:WHAT?\n");
 			}
 		}
+		else {
+			fprintf(stderr, "ER:WHAT?\n");
+		}
+		pthread_exit(0);
+	}
+	else if (strcmp(command,"OPNBX")==0) {
+//		read(conn->sock, command2, 25);
 	}
 	/* close socket and clean up */
 	/*close(conn->sock);
