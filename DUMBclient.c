@@ -1,52 +1,84 @@
-// Client side C/C++ program to demonstrate Socket programming
+#include <stdlib.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <ctype.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <unistd.h>
-#include <string.h>
 #include <pthread.h>
-#define PORT 8080
+#include <string.h>
 
-int main(int argc, char const *argv[]) {
-	if (argc < 2) {
-		printf("Not enough inputs\n");
-		return -1;
-	}
+int connected = 1;
 
-	int sock = 0, valread;
-	struct sockaddr_in serv_addr;
-	char *hello = "Hello from client";
-	char buffer[1024] = {0};
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0)
+int main(int argc, char* argv[]) {
+	int pNum;
+	char *IPbuffer;
+	char* ip = argv[1];
+	char* portNum = argv[2];
+	pNum = atoi(portNum);
+	struct hostent *host_entry;
+	struct sockaddr_in server_address;
+	server_address.sin_family = AF_INET;
+
+	int client_socket;
+	client_socket = socket(AF_INET,SOCK_STREAM,0);
+
+	host_entry = gethostbyname(ip);
+	if(host_entry == NULL)
 	{
-		printf("\n Socket creation error \n");
-		return -1;
+		error("ERROR: no such host\n");
 	}
 
-	if (strcmp(argv[1], "GDBYE") == 0) {
-		close(sock);
-		return 0;
-	}
-
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(PORT);
-
-	// Convert IPv4 and IPv6 addresses from text to binary form
-	if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)
+	bzero((char *) &server_address, sizeof(server_address));
+	server_address.sin_family = AF_INET;
+	bcopy((char*) host_entry -> h_addr,(char *)&server_address.sin_addr.s_addr,host_entry->h_length);
+	server_address.sin_port = htons(pNum);
+    
+    
+ 	int retries=0;
+    
+	while(connect(client_socket,(struct sockaddr *) &server_address,sizeof(server_address)) < 0)
 	{
-		printf("\nInvalid address/ Address not supported \n");
-		return -1;
+		printf("Unable to connect. Retrying...\n");
+		sleep(1);
+        	if(retries >= 2){
+            		printf("ERROR: Could not connect to server. Shutting down...\n");
+	    		connected = 0;
+           		return -1;
+        	}
+        	retries++;
+	}
+	send(client_socket,"HELLO",5,0);
+	sleep(1);
+	char hello[128];
+	recv(client_socket, hello, sizeof(hello), 0);
+	if(strncmp(hello, "HELLO DUMBv0 ready!", 19) ==0){
+		printf("%s\n", hello);
+	}else{
+		//connected = 0;
+		
 	}
 
-	if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-	{
-		printf("\nConnection Failed\n");
-		return -1;
-	}
-	send(sock , hello , strlen(hello) , 0 );
-	printf("Hello message sent\n");
-	valread = read(sock, buffer, 1024);
-	printf("%s\n",buffer);
+	char commandBuffer[128];
+	char receiveBuffer[128];
+	do{
+		printf("\n> ");
+		fgets(commandBuffer,256,stdin);
+		if(strncmp(commandBuffer, "quit", 4) == 0){
+			send(client_socket,"GDBYE",5,0);
+			connected = 0;
+			break;
+		}
+		send(client_socket,commandBuffer,strlen(commandBuffer),0);
+		//sleep(1);
+		//recv(client_socket, hello, sizeof(hello), 0);
+		//printf("%s\n", hello);
+		
+		if(connected ==0)
+			break;
+			
+	}while(connected == 1);
 	return 0;
 }
