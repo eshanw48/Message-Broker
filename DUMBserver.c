@@ -50,12 +50,10 @@ void * process(void * ptr)
 	printf("Port number is %d\n", portN);
 
 
-	char *command = (char*)malloc(5*sizeof(char));
-	//char *command2 = (char*)malloc(25*sizeof(char));
-
+	char *command = (char*)malloc(25*sizeof(char));
+	while (strcmp(command, "GDBYE") != 0) {
 	read(conn->sock,command,5);
 	printf("command: %s\n", command);
-//	printf("command2: %s\n", command2);
 
 	if(strcmp(command,"HELLO") == 0)
 	{
@@ -66,34 +64,35 @@ void * process(void * ptr)
 		shutdown(conn->sock, SHUT_RDWR);
 		close(conn->sock);
 		free(conn);
-		pthread_exit(0);
+		//pthread_exit(0);
 	}else if(strcmp(command,"CREAT")==0){
-		char *command2 = (char*)malloc(25*sizeof(char));
-		read(conn->sock, command2, 25);
-		int len = strlen(command2);
-		printf("1command2: %s\n", command2);
+		//char *command2 = (char*)malloc(25*sizeof(char));
+		read(conn->sock, command, 25);
+		int len = strlen(command);
+		printf("length: %d\n", len);
 		if (len >= 5 && len <= 25) {
-			if ((command2[0] >= 'a' && command2[0] <= 'z') || command2[0] >= 'A' && command2[0] <= 'Z') {
+			printf("command cahr: %c\n", command[1]);
+			printf("command:%s \n", command);
+			if ((command[1] >= 'a' && command[1] <= 'z') || (command[1] >= 'A' && command[1] <= 'Z')) {
 				msgBox *temp = head;
 				while (temp->next != NULL) {
-					if (strcmp(temp->next->name, command2) == 0) {
+					if (strcmp(temp->next->name, command) == 0) {
 						fprintf(stderr, "ER:EXIST\n");
-						pthread_exit(0);
+						//pthread_exit(0);
 					}
 					temp = temp->next;
 				}
 
-				temp->next = newMsgBox(command2);
+				temp->next = newMsgBox(command);
 				printf("OK!\n");
 			}
 			else {
-				fprintf(stderr, "ER:WHAT?\n");
+				fprintf(stderr, "ER:WHAT??\n");
 			}
 		}
 		else {
 			fprintf(stderr, "ER:WHAT?\n");
 		}
-		pthread_exit(0);
 	}
 	else if (strcmp(command,"OPNBX")==0) {
 //		read(conn->sock, command2, 25);
@@ -102,7 +101,7 @@ void * process(void * ptr)
 	/*close(conn->sock);
 	free(conn);
 	pthread_exit(0);*/
-
+}
 }
 
 	int main(int argc, char **argv)
