@@ -17,7 +17,22 @@ typedef struct
 	int addr_len;
 } connection_t;
 
+typedef struct
+{
+	char *name;
+	char **message;
+	struct msgBox *next;
+} msgBox;
+
+msgBox *newMsgBox(char *name) {
+	struct msgBox *root = (msgBox*)malloc(sizeof(msgBox));
+  root->name = name;
+  root->next = NULL;
+  return root;
+}
+
 int portN;
+msgBox *head = newMsgBox("head");
 
 void * process(void * ptr)
 {
@@ -26,30 +41,46 @@ void * process(void * ptr)
 	connection_t * conn;
 	long addr = 0;
 
-	if (!ptr) pthread_exit(0); 
+	if (!ptr) pthread_exit(0);
 	conn = (connection_t *)ptr;
 
 
 	//HELLO
 	printf("Port number is %d\n", portN);
-	
 
-	char *command;
-	command = (char *)malloc(2*sizeof(char));
 
-	read(conn->sock,command,2);
+	char *command = (char *)malloc(5*sizeof(char));
+	char *command2 = (char*)malloc(25*sizeof(char));
 
+	read(conn->sock,command,5);
+	printf("command: %s\n", command);
 	if(strcmp(command,"GDBYE")==0){
-	
-
+		shutdown(conn->sock);
+		close(conn->sock);
+		read(conn->sock, command, 5);
+		free(conn);
+		pthread_exit(0);
 	}else if(strcmp(command,"CREAT")==0){
-	
-	
+		read(conn->sock, command2, 25);
+		int len = strlen(command2);
+		if (len >= 5 && len <= 25) {
+			if ((command2[0] >= 'a' && command2[0] <= 'z') || command2[0] >= 'A' && command2[0] <= 'Z') {
+				msgBox temp = head;
+				while (temp != NULL) {
+					if (strcmp(temp->name, command2) == 0) {
+						fprintf(stderr, "ER:EXIST\n");
+						//pthread_exit(0);
+					}
+					temp = temp->next;
+				}
+			}
+		}
+	}
 	/* close socket and clean up */
-	close(conn->sock);
+	/*close(conn->sock);
 	free(conn);
-	pthread_exit(0);
-}
+	pthread_exit(0);*/
+
 }
 
 	int main(int argc, char **argv)
@@ -59,12 +90,6 @@ void * process(void * ptr)
 	int port;
 	connection_t * connection;
 	pthread_t thread;
-
-	if(argc < 2)
-{
-	printf("Invalid args\n");
-	return -1;
-}
 	portN = atoi(argv[1]);
 
 	/* check for command line arguments */
@@ -107,7 +132,7 @@ void * process(void * ptr)
 	}
 
 	printf("%s: ready and listening\n", argv[0]);
-	
+
 	while (1)
 	{
 		/* accept incoming connections */
@@ -122,9 +147,8 @@ void * process(void * ptr)
 			/* start a new thread but do not wait for it */
 			pthread_create(&thread, 0, process, (void *)connection);
 			pthread_detach(thread);
-		//	printf("hello\n");
 		}
 	}
-	
+
 	return 0;
 }
