@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 typedef struct
 {
 	int sock;
@@ -35,6 +36,11 @@ int portN;
 msgBox *head;
 msgBox *current;
 
+
+
+
+
+
 void * process(void * ptr)
 {
 	char * buffer;
@@ -46,14 +52,23 @@ void * process(void * ptr)
 	conn = (connection_t *)ptr;
 	head = newMsgBox("head");
 
-	//HELLO
-	printf("Port number is %d\n", portN);
-
+//	printf("Port number is %d\n", portN);
+//printf("IP address is: %s\n", inet_ntoa(connection->address));
 
 	char *command = (char*)malloc(25*sizeof(char));
 	while (strcmp(command, "GDBYE") != 0) {
 	read(conn->sock,command,5);
-	printf("command: %s\n", command);
+	
+	time_t t ; 
+    struct tm *tmp ; 
+    char MY_TIME[50]; 
+    time( &t );
+
+	tmp = localtime( &t );
+
+	strftime(MY_TIME, sizeof(MY_TIME), "%H%M %d %B", tmp); 
+      
+//    printf("%s\n", MY_TIME );  
 
 	if(strcmp(command,"HELLO") == 0)
 	{
@@ -61,46 +76,71 @@ void * process(void * ptr)
 	}
 	else if(strcmp(command,"GDBYE")==0){
 		write(conn->sock, "OK Goodbye", 10);
+		printf("%s\n", MY_TIME );
 		shutdown(conn->sock, SHUT_RDWR);
 		close(conn->sock);
 		free(conn);
 		//pthread_exit(0);
 	}else if(strcmp(command,"CREAT")==0){
-		//char *command2 = (char*)malloc(25*sizeof(char));
-		read(conn->sock, command, 25);
-		int len = strlen(command);
-		printf("length: %d\n", len);
+		char *command2 = (char*)malloc(25*sizeof(char));
+		read(conn->sock, command2, 25);
+		printf("%s\n", MY_TIME );
+		int len = strlen(command2);
+	//	printf("length: %d\n", len);
 		if (len >= 5 && len <= 25) {
-			printf("command cahr: %c\n", command[1]);
-			printf("command:%s \n", command);
-			if ((command[1] >= 'a' && command[1] <= 'z') || (command[1] >= 'A' && command[1] <= 'Z')) {
+			if ((command2[1] >= 'a' && command2[1] <= 'z') || (command2[1] >= 'A' && command2[1] <= 'Z')) {
 				msgBox *temp = head;
 				while (temp->next != NULL) {
-					if (strcmp(temp->next->name, command) == 0) {
+					if (strcmp(temp->next->name, command2) == 0) {
 						fprintf(stderr, "ER:EXIST\n");
-						//pthread_exit(0);
+						
 					}
 					temp = temp->next;
 				}
 
-				temp->next = newMsgBox(command);
+				temp->next = newMsgBox(command2); //MOVE SOMEWHERE ELSE
 				printf("OK!\n");
 			}
-			else {
-				fprintf(stderr, "ER:WHAT??\n");
-			}
+		//	else {
+			//	fprintf(stderr, "ER:WHAT??\n");
+		//	}
 		}
-		else {
-			fprintf(stderr, "ER:WHAT?\n");
-		}
+	else{
+	fprintf(stderr, "ER:WHAT?\n");
+}
+		
 	}
-	else if (strcmp(command,"OPNBX")==0) {
+	else if (strcmp(command,"DELBX")==0) {
 //		read(conn->sock, command2, 25);
+/*
+node* deleteNode(struct node *head, int data){
+struct node *temp = malloc(sizeof(struct node));
+temp->data = data;
+struct node *ptr = head;
+struct node *prev = temp;
+if(head == NULL){
+return head;
+}
+if(head->data == data){
+head = head->next;
+ptr = head;
+prev = ptr;
+}
+
+while(ptr != NULL){
+if(ptr->data != data){
+prev = ptr;
+ptr = ptr->next;
+}else{
+prev->next = ptr->next;
+ptr = ptr->next;
+}
+}
+return head; 
+free(ptr);
+}
+*/
 	}
-	/* close socket and clean up */
-	/*close(conn->sock);
-	free(conn);
-	pthread_exit(0);*/
 }
 }
 
@@ -152,7 +192,7 @@ void * process(void * ptr)
 		return -5;
 	}
 
-	printf("%s: ready and listening\n", argv[0]);
+	printf("%s: ready and listening on port %d \n", argv[0], portN);
 
 	while (1)
 	{
