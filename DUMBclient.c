@@ -87,21 +87,35 @@ int main(int argc, char* argv[]) {
 			send(client_socket,out,128,0);
 			//printf("%s\n", out);
 		}else if(strncmp(commandBuffer, "open", 4) == 0){
-			printf("Okay, open which message box?\n");
-			printf("\n> ");
+			printf("Okay, open which message box?\n> ");
 			fgets(inputBuffer,128,stdin);
 			strtok(inputBuffer,"\n");
 			char out[] = "OPNBX ";
 			strcat(out, inputBuffer);
-			send(client_socket,out, sizeof(out), 0);
+			send(client_socket,out,128,0);
+		}else if(strncmp(commandBuffer, "next", 4) == 0){
+			send(client_socket, "NXTMG", 5,0);
+			recv(client_socket, receiveBuffer, sizeof(receiveBuffer)-1, 0);
+			if(strncmp(receiveBuffer, "ER:EMPTY", 8)==0){
+				printf("Error: No more messages left in message box.\n");
+			}else if(strncmp(receiveBuffer, "ER:NOOPN", 8)==0){
+				printf("Error: No message box currently open.\n");
+			}else if(strncmp(receiveBuffer, "ER:WHAT?", 8)==0){
+				printf("Error: Command not sent correctly!\n");
+			}else{//OK!12!Oh hai, Mark!
+				
+				char * length;
+				length = strtok(receiveBuffer, "!");
+				int len = strlen(length);
+				int msgLength = atoi(length);
+				int offset = msgLength + 4 ;
+				char message[msgLength];
+				strncpy(message, receiveBuffer + offset, msgLength);
+				printf("Message: %s", message);
+			}
 		}
 		else{
 			send(client_socket,commandBuffer,sizeof(commandBuffer),0);
-		}
-		sleep(1);
-		recv(client_socket, receiveBuffer, strlen(receiveBuffer), 0);
-		if(strcmp(receiveBuffer,"OK!")==0 && strcmp(commandBuffer,"create")==0){
-			printf("Created messagebox %s \n", commandBuffer);
 		}
 
 		if(connected ==0)
