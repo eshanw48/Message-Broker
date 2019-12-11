@@ -35,10 +35,10 @@ int main(int argc, char* argv[]) {
 	server_address.sin_family = AF_INET;
 	bcopy((char*) host_entry -> h_addr,(char *)&server_address.sin_addr.s_addr,host_entry->h_length);
 	server_address.sin_port = htons(pNum);
-    
-    
+
+
  	int retries=0;
-    
+
 	while(connect(client_socket,(struct sockaddr *) &server_address,sizeof(server_address)) < 0)
 	{
 		printf("Unable to connect. Retrying...\n");
@@ -55,30 +55,60 @@ int main(int argc, char* argv[]) {
 	char hello[128];
 	recv(client_socket, hello, sizeof(hello), 0);
 	if(strncmp(hello, "HELLO DUMBv0 ready!", 19) ==0){
-		printf("%s\n", hello);
+		printf("Successfully connected to server!\n");
 	}else{
 		//connected = 0;
-		
+
 	}
 
+	char prevCommand[128];
 	char commandBuffer[128];
 	char receiveBuffer[128];
+	char inputBuffer[128];
+
 	do{
+		bzero(commandBuffer, 128);
+		bzero(receiveBuffer, 128);
+		bzero(inputBuffer, 128);
 		printf("\n> ");
-		fgets(commandBuffer,256,stdin);
+		fgets(commandBuffer,128,stdin);
+		strtok(commandBuffer,"\n");
 		if(strncmp(commandBuffer, "quit", 4) == 0){
 			send(client_socket,"GDBYE",5,0);
 			connected = 0;
 			break;
 		}
-		send(client_socket,commandBuffer,strlen(commandBuffer),0);
-		//sleep(1);
-		//recv(client_socket, hello, sizeof(hello), 0);
-		//printf("%s\n", hello);
-		
+		else if(strncmp(commandBuffer, "create", 6) == 0){
+			printf("Okay, create message box with what name?\n> ");
+			fgets(inputBuffer,128,stdin);
+			strtok(inputBuffer,"\n");
+			char out[] = "CREAT ";
+			strcat(out, inputBuffer);
+			send(client_socket,out,128,0);
+			//printf("%s\n", out);
+		}else if(strncmp(commandBuffer, "open", 4) == 0){
+			printf("Okay, open which message box?\n");
+			printf("\n> ");
+			fgets(inputBuffer,128,stdin);
+			strtok(inputBuffer,"\n");
+			char out[] = "OPNBX ";
+			strcat(out, inputBuffer);
+			send(client_socket,out, sizeof(out), 0);
+		}
+		else{
+			send(client_socket,commandBuffer,sizeof(commandBuffer),0);
+		}
+		sleep(1);
+		recv(client_socket, receiveBuffer, strlen(receiveBuffer), 0);
+		if(strcmp(receiveBuffer,"OK!")==0 && strcmp(commandBuffer,"create")==0){
+			printf("Created messagebox %s \n", commandBuffer);
+		}
+
 		if(connected ==0)
 			break;
-			
+
+
+		strcpy(commandBuffer, prevCommand);
 	}while(connected == 1);
 	return 0;
 }
